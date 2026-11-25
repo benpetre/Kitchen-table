@@ -258,7 +258,7 @@ Write today's Common Ground puzzle: sixteen tiles that sort into four groups of 
 - level 1 is the most straightforward group and level 4 the trickiest (a hidden pattern, wordplay, "___ + word", things that share an unexpected property). Use each level once.
 - Build in some misdirection: at least three tiles should look at first as if they belong to a different group. But there must be exactly one correct solution - go through every tile and make sure it truly fits only its own group.
 - Titles are shown when a group is solved: short, precise, and they should make someone say "oh, of course".
-- Make the four groups about different things. One group (not more than two) should come from today's brief or the family's notes.
+- Make the four groups about different things. One group should come from the current pop culture or news in today's brief (a movie, show, artist, game, team or event people are talking about this week), and one from the family's notes or the season; the other two can be anything.
 
 Group ideas used recently, to avoid repeating: ${i.recent.groupTitles.slice(0, 60).join("; ") || "(none)"}${keepSecret}`,
     schema: obj({ groups: arr(obj({ title: str, level: int, words: arr(str) })) }),
@@ -332,7 +332,10 @@ Countries (code - name): ${atlasList.map((c) => `${c[0]} - ${c[1]}`).join("; ")}
   });
 
   // The crossword fill waits for the trail words so the two never share an entry.
-  const cross = crossword(i, system, context, meta, seed, secret, trails.then((t) => t?.words.map((x) => x.word) ?? []));
+  const cross = crossword(
+    i, system, context, meta, seed, secret,
+    Promise.all([trails, groups]).then(([t, g]) => [...(t?.words.map((x) => x.word) ?? []), ...(g?.groups.flatMap((x) => x.words.map((tile) => lettersOf(tile))) ?? [])]),
+  );
 
   const [g, r, t, a, c] = await Promise.all([groups, rare, trails, atlas, cross]);
   if (w) puzzles.word = w;
@@ -379,7 +382,7 @@ Choose seven prompts (five are used, two are spares):
 - counts: one sentence for the answer writer saying exactly what counts and what does not.
 - Each needs a clear, factual answer set, where it is never a matter of opinion whether an answer counts.
 - Size matters: choose categories with 30 to 60 members in total - count them roughly in your head before committing - so the answer list can be complete and still leaves room to dig. Fewer than 30 is too thin for a rarity game. A player who types a correct answer that is missing from the list scores nothing for being right, which feels terrible. If a category is bigger than that (all the elements, every country), narrow it until the whole set fits ("Name one of the first 40 elements", "Name a country in South or Central America").
-- Seven different areas of knowledge, pitched so the 12-year-old always has an answer and the adults can dig. Two should come from today's brief or the family's notes; the rest can be evergreen.
+- Seven different areas of knowledge, pitched so the 12-year-old always has an answer and the adults can dig. At least two must come from the current pop culture or news in today's brief (a movie or show, an artist, a game, a team, league or event people are talking about this week, turned into a category with a clear answer set), and at least one from the family's notes; the rest can be evergreen. List those three first.
 
 Prompts used recently, to avoid repeating: ${i.recent.rarePrompts.slice(0, 60).join("; ") || "(none)"}${secret ? `\n\nOne more rule: today's mystery word in another game is ${secret}. Avoid any category in which ${secret} would be a correct answer.` : ""}`,
     schema: obj({ prompts: arr(obj({ prompt: str, counts: str })) }),
@@ -460,7 +463,8 @@ async function crossword(
   meta: GenerateOutput["meta"],
   seed: (salt: string) => () => number,
   secret: string,
-  trailWords: Promise<string[]>,
+  /** Words other games use as answers today (trail words, Common Ground tiles). */
+  otherAnswers: Promise<string[]>,
 ): Promise<CrossPuzzle | undefined> {
   const t0 = Date.now();
   let title = "";
@@ -481,7 +485,7 @@ We are building today's Pocket Cross, a 5x5 mini crossword. Code fills the grid;
     return words.length >= 8 ? { value: words, errors: [] } : { errors: [`only ${words.length} words are 3-5 letters long; 20 are needed`] };
   })) ?? [];
   // Nothing another game uses as an answer today may be an entry here.
-  const taken = new Set<string>([...(await trailWords), ...(secret ? [secret] : [])]);
+  const taken = new Set<string>([...(await otherAnswers), ...(secret ? [secret] : [])]);
   const themeWords = proposed.filter((x) => !taken.has(x));
   meta.crossExtra = themeWords.filter((x) => !COMMON.has(x));
 
@@ -512,7 +516,7 @@ ${describe()}
 
 1. Choose the grid to publish: the one whose entries are all words or names a 12-year-old knows, with nothing crude, obscure, awkward or abbreviation-like. Among good grids prefer the one with more theme words. Answer with its number in "grid".
 2. In "reject", list any entries (from any grid) that are not fair for this audience. If no grid is acceptable, set "grid" to 0, give the reject list, and leave "clues" empty - new grids will be made without those words.
-3. Write a clue for every entry of the chosen grid, across and down. Clues are short (under 60 characters), accurate and lively: mostly direct definitions a 12-year-old can get, with two or three playful ones, and a nod to today's theme where an entry allows it. A clue never contains its own answer or a form of it. Fill-in-the-blank clues use "___".`,
+3. Write a clue for every entry of the chosen grid, across and down. Clues are short (under 60 characters), accurate and lively: mostly direct definitions a 12-year-old can get, with two or three playful ones, and a nod to today's theme, pop culture or news from the brief where an entry allows it. A clue never contains its own answer or a form of it. Fill-in-the-blank clues use "___".${secret ? `\n4. Today's mystery word in another game is ${secret}. No clue may contain ${secret} or a form of it - that would give the other game away.` : ""}`,
     schema: obj({ grid: int, reject: arr(str), clues: arr(obj({ answer: str, clue: str })) }),
   }, (raw, n) => {
     const rejected = (raw.reject ?? []).map((x) => lettersOf(String(x)));
@@ -532,7 +536,8 @@ ${describe()}
       across: pick.across.map((c) => ({ ...c, clue: clueOf.get(c.answer) ?? "" })),
       down: pick.down.map((c) => ({ ...c, clue: clueOf.get(c.answer) ?? "" })),
     };
-    return { value: puzzle, errors: validateCross(puzzle, extra) };
+    const leaks = secret ? [...puzzle.across, ...puzzle.down].filter((c) => new RegExp(`\\b${secret}`, "i").test(c.clue)).map((c) => `the clue for ${c.answer} mentions ${secret}, today's mystery word in another game; rewrite it without that word`) : [];
+    return { value: puzzle, errors: validateCross(puzzle, extra).concat(leaks) };
   });
   meta.ms.crossTotal = Date.now() - t0;
   return result;

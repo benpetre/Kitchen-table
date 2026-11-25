@@ -87,5 +87,12 @@ assert.ok(validateDisjoint({ word: { answer: "APPLE" }, groups: out.puzzles.grou
 assert.ok(validateDisjoint({ word: { answer: "CRUST" }, trails: { ...out.puzzles.trails!, words: [{ word: "CRUST", path: [] }] } }).some((e) => e.startsWith("trails:")));
 assert.ok(validateDisjoint({ word: { answer: "ITEMS" }, rare: { prompts: [{ prompt: "p", best: "Items", answers: [{ a: "Items", pts: 5 }] }] } }).some((e) => e.startsWith("rare:")));
 assert.ok(validateDisjoint({ cross: clash.cross, trails: { ...out.puzzles.trails!, words: [{ word: "FEAST", path: [] }] } }).some((e) => e.includes("Word Trails")));
+// a clue that names the Hunch answer, and an entry that is also a Common Ground tile, are spoilers too
+const leaky = { word: { answer: "GRAVY" }, cross: { ...out.puzzles.cross!, across: out.puzzles.cross!.across.map((c, k) => (k ? c : { ...c, clue: "Lukewarm, like gravy left out" })) } };
+assert.ok(validateDisjoint(leaky).some((e) => e.includes("mentions GRAVY")));
+assert.ok(!validateDisjoint({ word: { answer: "GRAVY" }, cross: out.puzzles.cross }).some((e) => e.includes("mentions")));
+const firstEntry = out.puzzles.cross!.across[0].answer;
+const tiled = { cross: out.puzzles.cross, groups: { groups: out.puzzles.groups!.groups.map((g, k) => (k ? g : { ...g, words: [firstEntry[0] + firstEntry.slice(1).toLowerCase(), ...g.words.slice(1)] })) } };
+assert.ok(validateDisjoint(tiled).some((e) => e.includes("Common Ground tile")));
 assert.ok(stages.includes("brief") && stages.includes("cross"));
 console.log("generate ok:", JSON.stringify(out.meta.attempts), out.puzzles.cross!.grid.join("/"), out.puzzles.trails!.grid.join("/"));

@@ -190,6 +190,13 @@ export function validateDisjoint(set: PuzzleSet): string[] {
     });
   }
   for (const w of cross) if (trails.includes(w)) errs.push(`cross: ${w} is also a Word Trails word`);
+  if (word && set.cross) {
+    // A clue that names the Hunch answer gives it away just as an entry would.
+    const named = new RegExp(`\\b${word}`, "i");
+    for (const c of [...set.cross.across, ...set.cross.down]) if (named.test(c.clue)) errs.push(`cross: the clue for ${c.answer} mentions ${word}, today's Hunch answer`);
+  }
+  const tiles = (set.groups?.groups ?? []).flatMap((g) => g.words.map((t) => t.toUpperCase().replace(/[^A-Z]/g, "")));
+  for (const w of cross) if (tiles.includes(w)) errs.push(`cross: ${w} is also a Common Ground tile`);
   return errs;
 }
 
