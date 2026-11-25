@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Kitchen Table",
+    "slug": "kitchen-table",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.benpetre.kitchentable",
+      "buildNumber": "1",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.benpetre.kitchentable"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F6F1E7",
+          "image": "./assets/splash.png",
+          "imageWidth": 160
+        }
+      ]
+    ]
+  }
+}

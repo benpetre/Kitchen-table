@@ -1,0 +1,75 @@
+# Push to main -> validate -> EAS builds and submits to TestFlight.
+#
+# Needs one repo secret: EXPO_TOKEN (https://expo.dev/settings/access-tokens).
+#
+# One-time setup on a Mac before the first CI build can work (see README.md):
+#   npx eas-cli init            # creates the EAS project, writes its id into app.json - commit that
+#   npx eas-cli build --platform ios --profile production --auto-submit
+# The interactive run registers the bundle id, creates the provisioning profile
+# and the App Store Connect app. After that this workflow can do it unattended.
+name: TestFlight
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**'
+      - '!**.md'
+      - '!scripts/**'
+      # the backend deploys on its own - no app build needed
+      - '!supabase/**'
+  workflow_dispatch: {}
+
+concurrency:
+  group: testflight-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx jest --ci
+      - name: Backend algorithm tests
+        run: node --experimental-strip-types supabase/functions/games-api/algo.test.ts
+
+  build-and-submit:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Kick off EAS build + TestFlight submit
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::warning::EXPO_TOKEN secret not set - skipping EAS build. Create a token at https://expo.dev/settings/access-tokens and add it as a repository secret."
+            exit 0
+          fi
+          if ! grep -q '"projectId"' app.json; then
+            echo "::warning::app.json has no EAS projectId yet - skipping the build. Do the one-time setup in README.md first."
+            exit 0
+          fi
+          npx --yes eas-cli@latest build --platform ios --profile production --non-interactive --wait --auto-submit
+      - name: Verify TestFlight submission reached Apple
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ] || ! grep -q '"projectId"' app.json; then exit 0; fi
+          STATUS=$(npx --yes eas-cli@latest submit:list --platform ios --non-interactive 2>/dev/null | awk '/^Status/{print $2; exit}')
+          echo "Latest submission status: $STATUS"
+          if [ "$STATUS" = "errored" ]; then
+            npx --yes eas-cli@latest submit:list --platform ios --non-interactive | head -20
+            exit 1
+          fi
