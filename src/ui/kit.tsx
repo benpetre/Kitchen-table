@@ -30,7 +30,11 @@ export function Txt({
   ...rest
 }: { v?: Variant; dim?: boolean; color?: string; center?: boolean } & React.ComponentProps<typeof Text>) {
   const p = usePalette();
-  return <Text {...rest} style={[TEXT[v], { color: color ?? (dim || v === 'label' ? p.sub : p.ink) }, center && { textAlign: 'center' }, style]} />;
+  // A caller that enlarges the type must not inherit the variant's line height:
+  // iOS clips glyphs taller than their line, cutting the tops off big numbers.
+  const custom = StyleSheet.flatten(style) as TextStyle | undefined;
+  const roomy = custom?.fontSize != null && custom.lineHeight == null ? { lineHeight: Math.ceil(custom.fontSize * 1.22) } : null;
+  return <Text {...rest} style={[TEXT[v], { color: color ?? (dim || v === 'label' ? p.sub : p.ink) }, center && { textAlign: 'center' }, style, roomy]} />;
 }
 
 export function Btn({
