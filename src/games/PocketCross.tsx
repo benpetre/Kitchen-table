@@ -151,7 +151,7 @@ export default function PocketCross({ puzzle, accent, saved, save, finish, locke
                     accessibilityLabel={`Row ${r + 1} column ${c + 1}, ${st.fill[i] || 'blank'}`}
                     style={{ width: cell, height: cell, borderWidth: 0.5, borderColor: p.faint, backgroundColor: here ? tint(p, accent, 0.55) : inEntry ? tint(p, accent, 0.18) : p.card, alignItems: 'center', justifyContent: 'center' }}>
                     {nums[i] ? <Text style={{ position: 'absolute', top: 2, left: 4, fontSize: 11, fontWeight: '600', color: p.sub }}>{nums[i]}</Text> : null}
-                    <Text style={{ fontSize: cell * 0.5, fontWeight: '700', color: wrong.includes(i) ? p.bad : st.revealed.includes(i) ? accent : p.ink }}>{st.fill[i]}</Text>
+                    <Text style={{ alignSelf: 'stretch', textAlign: 'center', fontSize: cell * 0.5, fontWeight: '700', color: wrong.includes(i) ? p.bad : st.revealed.includes(i) ? accent : p.ink }}>{st.fill[i]}</Text>
                   </Pressable>
                 );
               })}

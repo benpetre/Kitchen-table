@@ -156,7 +156,8 @@ export function Keys({
         onPress();
       }}
       style={({ pressed }) => [styles.key, { backgroundColor: tone?.bg ?? p.raised, flex: wide ? 1.6 : 1 }, pressed && { opacity: 0.6 }]}>
-      <Text style={{ fontSize: wide ? 13 : 17, fontWeight: '700', color: tone?.fg ?? p.ink }}>{label}</Text>
+      {/* full-width and centred: a lone narrow letter (I) in a shrink-wrapped Text can vanish on iOS */}
+      <Text style={{ alignSelf: 'stretch', textAlign: 'center', fontSize: wide ? 13 : 17, fontWeight: '700', color: tone?.fg ?? p.ink }}>{label}</Text>
     </Pressable>
   );
   return (
