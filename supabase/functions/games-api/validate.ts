@@ -175,6 +175,30 @@ export function validateBlocks(p: BlocksPuzzle): string[] {
  * crossword entry, a Word Trails word, a Common Ground tile or a Long Shot
  * answer, and the crossword and Word Trails may not share a word.
  */
+/** Irregular forms of common five-letter words, which no spelling rule would find. */
+const IRREGULAR: Record<string, string[]> = {
+  MOUSE: ["MICE"], GOOSE: ["GEESE"], TOOTH: ["TEETH"], CHILD: ["CHILDREN"], WOMAN: ["WOMEN"],
+  KNIFE: ["KNIVES"], SHELF: ["SHELVES"], THIEF: ["THIEVES"], WRITE: ["WROTE", "WRITTEN"], DRIVE: ["DROVE"],
+  SPEAK: ["SPOKE"], BREAK: ["BROKE"], STEAL: ["STOLE"], THROW: ["THREW"], DRINK: ["DRANK", "DRUNK"],
+  BRING: ["BROUGHT"], TEACH: ["TAUGHT"], CATCH: ["CAUGHT"], THINK: ["THOUGHT"], SLEEP: ["SLEPT"],
+  SWEEP: ["SWEPT"], STAND: ["STOOD"], BUILD: ["BUILT"], SPEND: ["SPENT"], SHAKE: ["SHOOK"],
+  BEGIN: ["BEGAN", "BEGUN"], SWING: ["SWUNG"], STING: ["STUNG"], STICK: ["STUCK"], FIGHT: ["FOUGHT"],
+  LEAVE: ["LEFT"], SWEAR: ["SWORE"], FREEZE: ["FROZE"], AWAKE: ["AWOKE"], ARISE: ["AROSE"],
+};
+
+/**
+ * Matches text that would give a word away: the word itself with any ending
+ * (FLOAT, FLOATS, FLOATED), its y-to-i and dropped-e spellings (GRAVIES, DANCING)
+ * and its irregular forms (MICE for MOUSE).
+ */
+export function spoilerPattern(word: string): RegExp {
+  const w = word.toUpperCase();
+  const forms = [`${w}[A-Z]*`, ...(IRREGULAR[w] ?? []).map((f) => `${f}[A-Z]*`)];
+  if (/[^AEIOU]Y$/.test(w)) forms.push(`${w.slice(0, -1)}I[A-Z]+`);
+  if (w.endsWith("E")) forms.push(`${w.slice(0, -1)}ING`);
+  return new RegExp(`\\b(?:${forms.join("|")})\\b`, "i");
+}
+
 export function validateDisjoint(set: PuzzleSet): string[] {
   const errs: string[] = [];
   const cross = set.cross ? [...set.cross.across, ...set.cross.down].map((c) => c.answer) : [];
@@ -190,6 +214,13 @@ export function validateDisjoint(set: PuzzleSet): string[] {
     });
   }
   for (const w of cross) if (trails.includes(w)) errs.push(`cross: ${w} is also a Word Trails word`);
+  if (word && set.cross) {
+    // A clue that names the Hunch answer gives it away just as an entry would.
+    const named = spoilerPattern(word);
+    for (const c of [...set.cross.across, ...set.cross.down]) if (named.test(c.clue)) errs.push(`cross: the clue for ${c.answer} mentions ${word}, today's Hunch answer`);
+  }
+  const tiles = (set.groups?.groups ?? []).flatMap((g) => g.words.map((t) => t.toUpperCase().replace(/[^A-Z]/g, "")));
+  for (const w of cross) if (tiles.includes(w)) errs.push(`cross: ${w} is also a Common Ground tile`);
   return errs;
 }
 

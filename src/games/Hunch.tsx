@@ -82,7 +82,7 @@ export default function Hunch({ puzzle, accent, saved, save, finish, locked }: G
               const l = look(row.marks ? row.marks[i] : null);
               return (
                 <View key={i} style={{ width: tile, height: tile, borderRadius: tile * 0.28, borderWidth: 2.5, borderColor: row.word[i] && !row.marks ? p.faint : l.border, backgroundColor: l.bg, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: tile * 0.46, fontWeight: '800', color: l.fg }}>{row.word[i] ?? ''}</Text>
+                  <Text style={{ alignSelf: 'stretch', textAlign: 'center', fontSize: tile * 0.46, fontWeight: '800', color: l.fg }}>{row.word[i] ?? ''}</Text>
                 </View>
               );
             })}

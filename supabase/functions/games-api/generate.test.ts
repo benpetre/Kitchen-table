@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { generateDaily, recentFrom } from "./generate.ts";
 import type { Llm } from "./llm.ts";
-import { validateDisjoint, validatePuzzleSet } from "./validate.ts";
+import { spoilerPattern, validateDisjoint, validatePuzzleSet } from "./validate.ts";
 
 const rareAnswers = (n: number) => Array.from({ length: n }, (_, i) => ({ a: `Item ${i}`, alt: i === 0 ? ["item zero", "Item 1"] : [], pts: Math.min(100, 4 + i * 3) }));
 let calls = 0;
@@ -87,5 +87,15 @@ assert.ok(validateDisjoint({ word: { answer: "APPLE" }, groups: out.puzzles.grou
 assert.ok(validateDisjoint({ word: { answer: "CRUST" }, trails: { ...out.puzzles.trails!, words: [{ word: "CRUST", path: [] }] } }).some((e) => e.startsWith("trails:")));
 assert.ok(validateDisjoint({ word: { answer: "ITEMS" }, rare: { prompts: [{ prompt: "p", best: "Items", answers: [{ a: "Items", pts: 5 }] }] } }).some((e) => e.startsWith("rare:")));
 assert.ok(validateDisjoint({ cross: clash.cross, trails: { ...out.puzzles.trails!, words: [{ word: "FEAST", path: [] }] } }).some((e) => e.includes("Word Trails")));
+// a clue that names the Hunch answer, and an entry that is also a Common Ground tile, are spoilers too
+const leaky = { word: { answer: "GRAVY" }, cross: { ...out.puzzles.cross!, across: out.puzzles.cross!.across.map((c, k) => (k ? c : { ...c, clue: "Lukewarm, like gravy left out" })) } };
+assert.ok(validateDisjoint(leaky).some((e) => e.includes("mentions GRAVY")));
+assert.ok(!validateDisjoint({ word: { answer: "GRAVY" }, cross: out.puzzles.cross }).some((e) => e.includes("mentions")));
+const firstEntry = out.puzzles.cross!.across[0].answer;
+const tiled = { cross: out.puzzles.cross, groups: { groups: out.puzzles.groups!.groups.map((g, k) => (k ? g : { ...g, words: [firstEntry[0] + firstEntry.slice(1).toLowerCase(), ...g.words.slice(1)] })) } };
+assert.ok(validateDisjoint(tiled).some((e) => e.includes("Common Ground tile")));
+// forms of the word count as naming it; unrelated words that merely contain it do not
+for (const [word, clue] of [["GRAVY", "Two gravies on the table"], ["MOUSE", "The singular of mice"], ["DANCE", "Dancing shoes"], ["FLOAT", "It floated by"], ["WRITE", "She wrote a note"]]) assert.ok(spoilerPattern(word).test(clue), `${word} / ${clue}`);
+for (const [word, clue] of [["GRAVY", "Engraved ring"], ["EARTH", "Hearth and home"], ["MOUSE", "A famous cat"], ["DANCE", "Abundance of food"]]) assert.ok(!spoilerPattern(word).test(clue), `${word} / ${clue}`);
 assert.ok(stages.includes("brief") && stages.includes("cross"));
 console.log("generate ok:", JSON.stringify(out.meta.attempts), out.puzzles.cross!.grid.join("/"), out.puzzles.trails!.grid.join("/"));

@@ -30,7 +30,11 @@ export function Txt({
   ...rest
 }: { v?: Variant; dim?: boolean; color?: string; center?: boolean } & React.ComponentProps<typeof Text>) {
   const p = usePalette();
-  return <Text {...rest} style={[TEXT[v], { color: color ?? (dim || v === 'label' ? p.sub : p.ink) }, center && { textAlign: 'center' }, style]} />;
+  // A caller that enlarges the type must not inherit the variant's line height:
+  // iOS clips glyphs taller than their line, cutting the tops off big numbers.
+  const custom = StyleSheet.flatten(style) as TextStyle | undefined;
+  const roomy = custom?.fontSize != null && custom.lineHeight == null ? { lineHeight: Math.ceil(custom.fontSize * 1.22) } : null;
+  return <Text {...rest} style={[TEXT[v], { color: color ?? (dim || v === 'label' ? p.sub : p.ink) }, center && { textAlign: 'center' }, style, roomy]} />;
 }
 
 export function Btn({
@@ -152,7 +156,8 @@ export function Keys({
         onPress();
       }}
       style={({ pressed }) => [styles.key, { backgroundColor: tone?.bg ?? p.raised, flex: wide ? 1.6 : 1 }, pressed && { opacity: 0.6 }]}>
-      <Text style={{ fontSize: wide ? 13 : 17, fontWeight: '700', color: tone?.fg ?? p.ink }}>{label}</Text>
+      {/* full-width and centred: a lone narrow letter (I) in a shrink-wrapped Text can vanish on iOS */}
+      <Text style={{ alignSelf: 'stretch', textAlign: 'center', fontSize: wide ? 13 : 17, fontWeight: '700', color: tone?.fg ?? p.ink }}>{label}</Text>
     </Pressable>
   );
   return (

@@ -165,7 +165,7 @@ export default function WordTrails({ puzzle, accent, saved, save, finish, locked
                   borderStyle: hintCells.includes(i) && owner == null ? 'dashed' : 'solid',
                   borderColor: hintCells.includes(i) && owner == null ? accent : owner != null || on ? 'transparent' : p.line,
                 }}>
-                <Text style={{ fontSize: size * 0.4, fontWeight: '800', color: owner != null ? (span ? p.bg : p.onAccent) : on ? p.bg : p.ink }}>{letterAt(puzzle, i)}</Text>
+                <Text style={{ alignSelf: 'stretch', textAlign: 'center', fontSize: size * 0.4, fontWeight: '800', color: owner != null ? (span ? p.bg : p.onAccent) : on ? p.bg : p.ink }}>{letterAt(puzzle, i)}</Text>
               </View>
             </View>
           );
