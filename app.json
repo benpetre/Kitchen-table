@@ -30,6 +30,12 @@
           "imageWidth": 160
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "25c8a073-ba12-4799-9293-ef9aeb9861e9"
+      }
+    },
+    "owner": "benpetre"
   }
 }
