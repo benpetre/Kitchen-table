@@ -1,7 +1,7 @@
 import { addDays, clock, localDate } from '../src/lib/dates';
 import { makeRandom, seedFrom, shuffled } from '../src/lib/rng';
 import { atlasPoints, COUNTRIES, countryByCode, direction, distanceKm, proximity, searchCountries } from '../src/logic/atlas';
-import { blocksPoints, COLS, hardDrop, move, newGame, pieceCells, rotate, ROWS, step } from '../src/logic/blocks';
+import { blocksPoints, COLS, dropInterval, hardDrop, levelOf, move, newGame, pieceCells, rotate, ROWS, step } from '../src/logic/blocks';
 import { cellNumbers, clueAt, clueCells, crossPoints, isFull, isSolved } from '../src/logic/cross';
 import { groupsPoints, judge } from '../src/logic/groups';
 import { editDistance, matchAnswer, normalize, rarePoints } from '../src/logic/rare';
@@ -224,8 +224,25 @@ describe('Brickfall', () => {
   });
   test('leaderboard points are bounded and rise with score', () => {
     expect(blocksPoints(0)).toBe(5);
-    expect(blocksPoints(6000)).toBe(63);
+    expect(blocksPoints(20000)).toBe(63);
     expect(blocksPoints(1e9)).toBe(100);
+  });
+  test('the pace climbs with lines cleared and with bricks landed, down to a floor', () => {
+    expect(levelOf({ lines: 0, pieces: 0 })).toBe(1);
+    expect(levelOf({ lines: 5, pieces: 0 })).toBe(2);
+    expect(levelOf({ lines: 0, pieces: 30 })).toBe(2);
+    expect(levelOf({ lines: 12, pieces: 65 })).toBe(5);
+    expect(levelOf({ lines: 7 })).toBe(2); // a run saved before bricks were counted
+    expect(dropInterval({ lines: 0, pieces: 0 })).toBe(720);
+    expect(dropInterval({ lines: 25, pieces: 60 })).toBeLessThan(dropInterval({ lines: 20, pieces: 60 }));
+    expect(dropInterval({ lines: 20, pieces: 90 })).toBeLessThan(dropInterval({ lines: 20, pieces: 60 }));
+    expect(dropInterval({ lines: 50, pieces: 150 })).toBeLessThan(120);
+    expect(dropInterval({ lines: 500, pieces: 999 })).toBe(70);
+  });
+  test('every landed brick is counted', () => {
+    let s = newGame(7);
+    for (let i = 0; i < 5; i++) s = hardDrop(s);
+    expect(s.pieces).toBe(5);
   });
 });
 

@@ -38,14 +38,21 @@ export interface BlocksState {
   rng: number;
   score: number;
   lines: number;
+  /** Bricks landed so far. Absent in runs saved by the first build. */
+  pieces?: number;
   over: boolean;
 }
 
 export const pieceCells = (p: Piece): [number, number][] => SHAPES[p.kind][p.rot].map(([x, y]) => [x + p.x, y + p.y]);
 export const shapeOf = (kind: number) => SHAPES[kind][0];
-export const levelOf = (lines: number) => Math.floor(lines / 10) + 1;
-/** Milliseconds between gravity steps. */
-export const dropInterval = (lines: number) => Math.max(90, 760 - (levelOf(lines) - 1) * 65);
+/**
+ * The level rises with every 5 lines cleared and, more slowly, with every 30
+ * bricks landed - so the pace keeps climbing even for a careful player and a
+ * run always ends.
+ */
+export const levelOf = (s: { lines: number; pieces?: number }) => 1 + Math.floor(s.lines / 5) + Math.floor((s.pieces ?? 0) / 30);
+/** Milliseconds between gravity steps: 14% quicker each level, from 0.72s down to a floor of 70ms. */
+export const dropInterval = (s: { lines: number; pieces?: number }) => Math.max(70, Math.round(720 * 0.86 ** (levelOf(s) - 1)));
 
 function fits(board: number[], p: Piece): boolean {
   return pieceCells(p).every(([x, y]) => x >= 0 && x < COLS && y < ROWS && (y < 0 || board[y * COLS + x] === 0));
@@ -71,7 +78,7 @@ const spawn = (kind: number): Piece => ({ kind, rot: 0, x: 3, y: kind === 0 ? -1
 
 export function newGame(seed: number): BlocksState {
   const [queue, rng] = refill([], seed | 0);
-  return { board: Array(ROWS * COLS).fill(0), piece: spawn(queue[0]), queue: queue.slice(1), rng, score: 0, lines: 0, over: false };
+  return { board: Array(ROWS * COLS).fill(0), piece: spawn(queue[0]), queue: queue.slice(1), rng, score: 0, lines: 0, pieces: 0, over: false };
 }
 
 export function move(s: BlocksState, dx: number): BlocksState {
@@ -115,11 +122,11 @@ function lock(s: BlocksState): BlocksState {
     else kept = kept.concat(row);
   }
   const next = Array(cleared * COLS).fill(0).concat(kept);
-  const score = s.score + LINE_SCORE[cleared] * levelOf(s.lines);
+  const score = s.score + LINE_SCORE[cleared] * levelOf(s);
   const [queue, rng] = refill(s.queue, s.rng);
   const piece = spawn(queue[0]);
   const over = above || !fits(next, piece);
-  return { board: next, piece, queue: queue.slice(1), rng, score, lines: s.lines + cleared, over };
+  return { board: next, piece, queue: queue.slice(1), rng, score, lines: s.lines + cleared, pieces: (s.pieces ?? 0) + 1, over };
 }
 
 /** One gravity step: fall a row, or lock in place. `soft` = the player asked for it (worth a point a row). */
@@ -139,5 +146,5 @@ export function hardDrop(s: BlocksState): BlocksState {
 
 /** Leaderboard points: climbs quickly at first and flattens toward 100. */
 export function blocksPoints(score: number): number {
-  return Math.max(5, Math.min(100, Math.round(100 * (1 - Math.exp(-score / 6000)))));
+  return Math.max(5, Math.min(100, Math.round(100 * (1 - Math.exp(-score / 20000)))));
 }

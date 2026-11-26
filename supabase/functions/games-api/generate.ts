@@ -15,7 +15,7 @@ import { COUNTRIES } from "./data/countries.ts";
 import { fillCrossword, type FillResult } from "./crossword.ts";
 import { lettersOf, packTrails, pickWords, TRAIL_COLS, TRAIL_ROWS } from "./trails.ts";
 import { hashSeed, mulberry32, randInt } from "./rng.ts";
-import { COMMON, EASY5, norm, validateAtlas, validateCross, validateDisjoint, validateGroups, validateRarePrompt, validateTrails, validateWord } from "./validate.ts";
+import { COMMON, EASY5, norm, spoilerPattern, validateAtlas, validateCross, validateDisjoint, validateGroups, validateRarePrompt, validateTrails, validateWord } from "./validate.ts";
 
 export interface Recent {
   themes: string[];
@@ -536,7 +536,7 @@ ${describe()}
       across: pick.across.map((c) => ({ ...c, clue: clueOf.get(c.answer) ?? "" })),
       down: pick.down.map((c) => ({ ...c, clue: clueOf.get(c.answer) ?? "" })),
     };
-    const leaks = secret ? [...puzzle.across, ...puzzle.down].filter((c) => new RegExp(`\\b${secret}`, "i").test(c.clue)).map((c) => `the clue for ${c.answer} mentions ${secret}, today's mystery word in another game; rewrite it without that word`) : [];
+    const leaks = secret ? [...puzzle.across, ...puzzle.down].filter((c) => spoilerPattern(secret).test(c.clue)).map((c) => `the clue for ${c.answer} mentions ${secret}, today's mystery word in another game; rewrite it without that word`) : [];
     return { value: puzzle, errors: validateCross(puzzle, extra).concat(leaks) };
   });
   meta.ms.crossTotal = Date.now() - t0;

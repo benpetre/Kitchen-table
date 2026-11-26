@@ -92,11 +92,13 @@ export default function Brickfall({ puzzle, accent, saved, save, finish, locked 
     [save],
   );
 
+  // Gravity. The timer restarts only when the pace changes, not on every move.
+  const pace = dropInterval(st.game);
   useEffect(() => {
     if (!running) return;
-    const t = setInterval(() => act((g) => step(g)), dropInterval(st.game.lines));
+    const t = setInterval(() => act((g) => step(g)), pace);
     return () => clearInterval(t);
-  }, [running, st.game.lines, act]);
+  }, [running, pace, act]);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
@@ -191,7 +193,7 @@ export default function Brickfall({ puzzle, accent, saved, save, finish, locked 
               ) : !st.started ? (
                 <>
                   <Txt center dim>
-                    One run a day. Same pieces for the whole family.
+                    One run a day. Same pieces for the whole family. The bricks fall faster as you go.
                   </Txt>
                   <Btn label="Start" color={accent} disabled={locked} onPress={() => setSt((s) => ({ ...s, started: true }))} />
                 </>
@@ -218,7 +220,7 @@ export default function Brickfall({ puzzle, accent, saved, save, finish, locked 
             [
               ['Score', st.game.score.toLocaleString()],
               ['Lines', String(st.game.lines)],
-              ['Level', String(levelOf(st.game.lines))],
+              ['Level', String(levelOf(st.game))],
             ] as const
           ).map(([k, v]) => (
             <View key={k}>
